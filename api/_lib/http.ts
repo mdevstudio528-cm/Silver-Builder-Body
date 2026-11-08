@@ -9,11 +9,17 @@ export interface Req {
   url?: string;
 }
 
+/**
+ * El objeto de respuesta NO es igual en los dos runtimes:
+ *   - scripts/dev-api.ts (local): trae status() y json()
+ *   - Vercel / Node nativo:       statusCode + setHeader + end
+ * Por eso status/json se declaran opcionales y siempre se comprueba su tipo.
+ */
 export interface Res {
-  status(code: number): Res;
+  status?(code: number): Res;
+  json?(body: any): void;
   setHeader(name: string, value: any): void;
-  json(body: any): void;
-  end(chunk?: any): void;
+  end?(chunk?: any): void;
   statusCode?: number;
 }
 
@@ -23,8 +29,21 @@ export class HttpError extends Error {
   }
 }
 
+/**
+ * Responde JSON en los dos runtimes.
+ * Si se asume solo el shim local, en Vercel `res.status` no existe, la excepción
+ * salta DENTRO del catch de run() y la función muere con
+ * FUNCTION_INVOCATION_FAILED (texto plano, 500).
+ */
 export function json(res: Res, status: number, body: any): void {
-  res.status(status).json(body);
+  const r: any = res;
+  if (typeof r.status === 'function' && typeof r.json === 'function') {
+    r.status(status).json(body);
+    return;
+  }
+  if (typeof r.setHeader === 'function') r.setHeader('Content-Type', 'application/json; charset=utf-8');
+  r.statusCode = status;
+  if (typeof r.end === 'function') r.end(JSON.stringify(body));
 }
 
 /** CORS explícito: la app y la API viven en el mismo dominio, pero en local usamos proxy. */
@@ -81,7 +100,12 @@ export function requireBody(req: Req): any {
 }
 
 export function metodoPermitido(req: Req, res: Res, permitidos: string[]): boolean {
-  if (req.method === 'OPTIONS') { res.status(204).end(); return false; }
+  if (req.method === 'OPTIONS') {
+    const r: any = res;
+    if (typeof r.status === 'function') { r.status(204).end(); }
+    else { r.statusCode = 204; if (typeof r.end === 'function') r.end(); }
+    return false;
+  }
   if (!permitidos.includes(String(req.method))) {
     json(res, 405, { ok: false, error: 'Método no permitido' });
     return false;

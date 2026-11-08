@@ -1,32 +1,20 @@
 /**
- * GET /api/health — diagnóstico de producción.
+ * GET /api/health — JavaScript puro (sin TypeScript, sin imports, CommonJS).
  *
- * IMPORTANTE: este archivo NO importa nada (ni _lib, ni fs, ni crypto).
- * Si responde 200 aquí, el runtime y las variables están bien y el problema
- * está en la cadena de imports de _lib (store → sheets → crypto/fs).
- * Si aun así devuelve FUNCTION_INVOCATION_FAILED, el problema es del runtime
- * o de la configuración de Functions en Vercel, no del código.
- *
- * No expone secretos: solo booleanos, longitudes y los extremos del JSON mal pegado.
+ * Se deja así a propósito: si el runtime tumba también este archivo, el
+ * problema es de configuración de Vercel y no del código ni de _lib.
+ * No expone secretos: booleanos, longitudes y extremos del JSON pegado.
  */
+'use strict';
 
-const VERSION = 'health-v3-sin-imports';
-
-function hoy(): string {
-  try {
-    const tz = process.env.APP_TIMEZONE || 'America/Mexico_City';
-    return new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(new Date());
-  } catch {
-    return new Date().toISOString().slice(0, 10);
-  }
-}
+const VERSION = 'health-js-v1-cjs-puro';
 
 function revisarCuenta() {
   const raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
   if (!raw) return { presente: false };
   const texto = String(raw).trim();
   try {
-    const sa: any = JSON.parse(texto.charAt(0) === '{' ? texto : Buffer.from(texto, 'base64').toString('utf8'));
+    const sa = JSON.parse(texto.charAt(0) === '{' ? texto : Buffer.from(texto, 'base64').toString('utf8'));
     const pk = String(sa.private_key || '');
     return {
       presente: true,
@@ -35,10 +23,9 @@ function revisarCuenta() {
       project_id: String(sa.project_id || ''),
       private_key_chars: pk.length,
       private_key_ok: pk.indexOf('BEGIN PRIVATE KEY') >= 0,
-      // los \n del PEM deben ser texto escapado, no saltos reales
       private_key_saltos_reales: pk.indexOf(String.fromCharCode(10)) >= 0
     };
-  } catch (e: any) {
+  } catch (e) {
     return {
       presente: true,
       json: 'invalido',
@@ -50,8 +37,8 @@ function revisarCuenta() {
   }
 }
 
-export default function handler(_req: any, res: any) {
-  let cuerpo: any;
+module.exports = function handler(req, res) {
+  let cuerpo;
   try {
     const driver = String(process.env.SHEETS_DRIVER || 'file').toLowerCase();
     const secret = String(process.env.SESSION_SECRET || '');
@@ -59,8 +46,8 @@ export default function handler(_req: any, res: any) {
       ok: true,
       ping: 'pong',
       version: VERSION,
+      metodo: req && req.method,
       driver: driver === 'sheets' ? 'sheets' : 'file',
-      hoy: hoy(),
       runtime: { node: process.version, region: process.env.VERCEL_REGION || '', env: process.env.VERCEL_ENV || '' },
       config: {
         sessionSecret: secret.length >= 16,
@@ -70,7 +57,7 @@ export default function handler(_req: any, res: any) {
       },
       cuentaServicio: driver === 'sheets' ? revisarCuenta() : null
     };
-  } catch (e: any) {
+  } catch (e) {
     cuerpo = { ok: false, version: VERSION, error: String((e && e.message) || e) };
   }
 
@@ -80,8 +67,8 @@ export default function handler(_req: any, res: any) {
       res.status(200).json(cuerpo);
       return;
     }
-  } catch { /* sigue al modo nativo */ }
+  } catch (e) { /* sigue al modo nativo */ }
   res.statusCode = 200;
   if (typeof res.setHeader === 'function') res.setHeader('Content-Type', 'application/json; charset=utf-8');
   res.end(texto);
-}
+};

@@ -29,12 +29,11 @@ export default run(async (req, res) => {
       const mios = pagos.filter(p => p.user_id === u.id);
       const r = resumenCliente(u.id, mios, hoy);
       return {
-        user_id: u.id,
+        ...r,
         nombre: `${u.nombre} ${u.ap_paterno} ${u.ap_materno}`.replace(/\s+/g, ' ').trim(),
         correo: u.correo,
         telefono: u.telefono,
         cuenta: u.estatus,
-        ...r,
         historial: mios
           .filter(p => Number(p.deleted) !== 1)
           .sort((a, b) => String(b.fecha_pago).localeCompare(String(a.fecha_pago)))

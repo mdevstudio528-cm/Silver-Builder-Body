@@ -2,6 +2,14 @@ import { run } from './_lib/run';
 import { json, hoyISO } from './_lib/http';
 import { driverActual } from './_lib/store';
 
+/**
+ * GET /api/health
+ *
+ * Diagnóstico público (no expone secretos: solo booleanos, longitudes y extremos).
+ * Absorbe lo que antes hacía /api/ping, porque el plan Hobby de Vercel permite
+ * un máximo de 12 Serverless Functions por deployment y había 13.
+ */
+
 /** Revisa la cuenta de servicio SIN exponer la llave: solo longitudes y extremos. */
 function revisarCuenta() {
   const raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
@@ -34,14 +42,16 @@ export default run(async (_req, res) => {
   const driver = driverActual();
   json(res, 200, {
     ok: true,
+    ping: 'pong',
     driver,
     hoy: hoyISO(),
     runtime: { node: process.version, region: process.env.VERCEL_REGION || '' },
     config: {
-      sessionSecret: !!process.env.SESSION_SECRET && process.env.SESSION_SECRET.length >= 16,
+      sessionSecret: !!process.env.SESSION_SECRET && String(process.env.SESSION_SECRET).length >= 16,
       sessionSecretChars: String(process.env.SESSION_SECRET || '').length,
       sheetId: !!process.env.SHEET_ID,
-      sheetIdChars: String(process.env.SHEET_ID || '').length
+      sheetIdChars: String(process.env.SHEET_ID || '').length,
+      allowedOrigin: String(process.env.ALLOWED_ORIGIN || '(sin definir)')
     },
     cuentaServicio: driver === 'sheets' ? revisarCuenta() : null,
     nota: driver === 'file'

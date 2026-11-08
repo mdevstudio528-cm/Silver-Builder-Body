@@ -20,7 +20,6 @@ const RUTAS: Record<string, string> = {
   '/api/admin/user-update': 'api/admin/user-update.ts',
   '/api/sync': 'api/sync.ts',
   '/api/goals': 'api/goals.ts',
-  '/api/admin/sheet-check': 'api/admin/sheet-check.ts',
   '/api/admin/cobranza': 'api/admin/cobranza.ts',
   '/api/admin/pagos': 'api/admin/pagos.ts'
 };

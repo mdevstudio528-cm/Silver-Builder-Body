@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* ============================================================
-   preparar-env.mjs — conecta el proyecto con tu hoja de Google
+   preparar-env.mjs — conecta el proyecto con tu hoja de Google HOLA MUNDO
    No necesita nada instalado: solo Node 18 o superior.
 
    Uso:

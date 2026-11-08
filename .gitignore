@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.angular/
+.env
+data/*.json
+*.log
+cookies*.txt
+google-service-account.json
+*-service-account*.json
+
+# Secretos: NUNCA al repositorio
+clave.json
+*.json.bak
+.env.bak

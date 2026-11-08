@@ -2,6 +2,7 @@
   "name": "administrador-financiero-ur",
   "version": "0.1.0",
   "private": true,
+  "engines": { "node": "26.x" },
   "scripts": {
     "start": "ng serve",
     "build": "ng build",
@@ -31,8 +32,5 @@
     "@angular/compiler-cli": "^18.2.11",
     "tsx": "^4.19.2",
     "typescript": "~5.5.4"
-  },
-  "engines": {
-    "node": "20.x"
   }
 }

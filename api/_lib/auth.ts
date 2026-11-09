@@ -41,7 +41,7 @@ const b64u = (s: string | Buffer) => Buffer.from(s as any).toString('base64url')
 
 export interface SessionClaims { uid: string; sv: number; iat: number; exp: number }
 
-export function signSession(uid: string, sv: number, days = 7): string {
+export function signSession(uid: string, sv: number, days = 90): string {
   const now = Math.floor(Date.now() / 1000);
   const head = b64u(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
   const body = b64u(JSON.stringify({ uid, sv, iat: now, exp: now + days * 86400 }));

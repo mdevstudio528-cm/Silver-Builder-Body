@@ -50,7 +50,7 @@ function secret() {
     return 'dev-secret-solo-para-local-no-usar-en-produccion';
 }
 const b64u = (s) => Buffer.from(s).toString('base64url');
-function signSession(uid, sv, days = 7) {
+function signSession(uid, sv, days = 90) {
     const now = Math.floor(Date.now() / 1000);
     const head = b64u(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
     const body = b64u(JSON.stringify({ uid, sv, iat: now, exp: now + days * 86400 }));

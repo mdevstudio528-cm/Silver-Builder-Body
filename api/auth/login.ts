@@ -48,7 +48,7 @@ export default run(async (req, res) => {
   }
 
   const token = signSession(u.id, Number(u.session_version || 1));
-  res.setHeader('Set-Cookie', serializeCookie(COOKIE, token, cookieOptions(7 * 86400)));
+  res.setHeader('Set-Cookie', serializeCookie(COOKIE, token, cookieOptions(90 * 86400)));
 
   await store.update(u.id, {
     ultimo_acceso: new Date().toISOString().slice(0, 16).replace('T', ' '),

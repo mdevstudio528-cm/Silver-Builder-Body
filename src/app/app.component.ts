@@ -15,6 +15,13 @@ import { PwaService } from './core/pwa.service';
       @if (pwa.offline()) {
         <div class="aviso-offline">📶 Sin conexión — puedes seguir registrando; todo se sube solo al volver el internet.</div>
       }
+      @if (auth.logueado() && auth.desdeCache()) {
+        <div class="aviso-offline aviso-nuevo">
+          🔒 Entraste con el perfil guardado en este dispositivo
+          ({{ auth.diasOffline() }} día(s) sin confirmar con el servidor).
+          Tus movimientos se guardan aquí y se suben solos al volver el internet.
+        </div>
+      }
       @if (pwa.actualizacion()) {
         <div class="aviso-offline aviso-nuevo">
           ✨ Hay una versión nueva de la app.

@@ -43,7 +43,7 @@ exports.default = (0, run_1.run)(async (req, res) => {
         throw new http_1.HttpError(403, 'Cuenta desactivada. Contacta al administrador para reactivarla.');
     }
     const token = (0, auth_1.signSession)(u.id, Number(u.session_version || 1));
-    res.setHeader('Set-Cookie', (0, http_1.serializeCookie)(guard_1.COOKIE, token, (0, http_1.cookieOptions)(7 * 86400)));
+    res.setHeader('Set-Cookie', (0, http_1.serializeCookie)(guard_1.COOKIE, token, (0, http_1.cookieOptions)(90 * 86400)));
     await store.update(u.id, {
         ultimo_acceso: new Date().toISOString().slice(0, 16).replace('T', ' '),
         intentos_fallidos: 0,

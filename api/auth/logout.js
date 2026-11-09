@@ -10,5 +10,4 @@ exports.default = (0, run_1.run)(async (req, res) => {
     (0, http_1.json)(res, 200, { ok: true });
 });
 
-/* Vercel / Node: el runtime invoca module.exports directamente, no .default */
 if (module.exports && typeof module.exports.default === 'function') module.exports = module.exports.default;

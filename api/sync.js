@@ -42,5 +42,4 @@ exports.default = (0, run_1.run)(async (req, res) => {
     });
 });
 
-/* Vercel / Node: el runtime invoca module.exports directamente, no .default */
 if (module.exports && typeof module.exports.default === 'function') module.exports = module.exports.default;

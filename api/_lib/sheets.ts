@@ -256,3 +256,61 @@ export async function verificarCredenciales(): Promise<{
     return { ok: false, error: e?.message || 'Error desconocido', pista: e?.pista || '' };
   }
 }
+
+/* ------------------------------------------------------------------ *
+ * Borrado real de filas (borrado en cascada de un usuario).
+ * deleteDimension necesita el sheetId NUMÉRICO de la pestaña, no su
+ * título, así que primero se piden los metadatos.
+ * ------------------------------------------------------------------ */
+
+export async function sheetsTabs(): Promise<{ title: string; sheetId: number }[]> {
+  const token = await accessToken();
+  const res = await fetch(`${base()}?fields=sheets.properties(sheetId,title)`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!res.ok) throw mapearError(res.status, await res.text(), 'metadata');
+  const j: any = await res.json();
+  return (j.sheets || [])
+    .map((s: any) => ({ title: s?.properties?.title, sheetId: s?.properties?.sheetId }))
+    .filter((t: any) => typeof t.title === 'string' && typeof t.sheetId === 'number');
+}
+
+/**
+ * Borra filas por número (1-based, contando el encabezado).
+ * Se agrupan las consecutivas y se envían en ORDEN DESCENDENTE dentro de un
+ * solo batchUpdate: si se borrara de arriba a abajo, cada borrado correría
+ * los índices y se eliminarían filas equivocadas.
+ */
+export async function sheetsDeleteRows(sheet: string, filas: number[]): Promise<number> {
+  const orden = [...new Set(filas.filter(n => Number.isFinite(n) && n >= 2))].sort((a, b) => b - a);
+  if (!orden.length) return 0;
+
+  const tab = (await sheetsTabs()).find(t => t.title === sheet);
+  if (!tab) return 0;
+
+  const grupos: { start: number; end: number }[] = [];
+  for (const f of orden) {
+    const ult = grupos[grupos.length - 1];
+    if (ult && ult.start === f + 1) ult.start = f;
+    else grupos.push({ start: f, end: f });
+  }
+
+  const token = await accessToken();
+  const res = await fetch(`${base()}:batchUpdate`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      requests: grupos.map(g => ({
+        deleteDimension: { range: { sheetId: tab.sheetId, dimension: 'ROWS', startIndex: g.start - 1, endIndex: g.end } }
+      }))
+    })
+  });
+  if (!res.ok) throw mapearError(res.status, await res.text(), `DELETE ${sheet}`);
+  return orden.length;
+}
+
+/** Cuenta filas que cumplen un predicado, leyendo la pestaña completa. */
+export async function sheetsContar(sheet: string, ultimaCol: string, coincide: (r: any[]) => boolean): Promise<number> {
+  const v = await sheetsGetValues(`${sheet}!A2:${ultimaCol}`);
+  return v.filter(coincide).length;
+}

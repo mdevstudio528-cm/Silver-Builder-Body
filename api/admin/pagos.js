@@ -128,5 +128,4 @@ exports.default = (0, run_1.run)(async (req, res) => {
 /** Etiquetas para que el front no las invente por su cuenta. */
 exports._metodos = pago_types_1.METODOS;
 
-/* Vercel / Node: el runtime invoca module.exports directamente, no .default */
 if (module.exports && typeof module.exports.default === 'function') module.exports = module.exports.default;

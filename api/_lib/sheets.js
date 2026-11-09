@@ -11,6 +11,9 @@ exports.sheetsUpdateRow = sheetsUpdateRow;
 exports.sheetsClearRange = sheetsClearRange;
 exports.sheetsEnsureSheet = sheetsEnsureSheet;
 exports.verificarCredenciales = verificarCredenciales;
+exports.sheetsTabs = sheetsTabs;
+exports.sheetsDeleteRows = sheetsDeleteRows;
+exports.sheetsContar = sheetsContar;
 /**
  * Cliente de Google Sheets con cuenta de servicio. Sin dependencias.
  *
@@ -248,4 +251,61 @@ async function verificarCredenciales() {
     catch (e) {
         return { ok: false, error: e?.message || 'Error desconocido', pista: e?.pista || '' };
     }
+}
+/* ------------------------------------------------------------------ *
+ * Borrado real de filas (borrado en cascada de un usuario).
+ * deleteDimension necesita el sheetId NUMÉRICO de la pestaña, no su
+ * título, así que primero se piden los metadatos.
+ * ------------------------------------------------------------------ */
+async function sheetsTabs() {
+    const token = await accessToken();
+    const res = await fetch(`${base()}?fields=sheets.properties(sheetId,title)`, {
+        headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!res.ok)
+        throw mapearError(res.status, await res.text(), 'metadata');
+    const j = await res.json();
+    return (j.sheets || [])
+        .map((s) => ({ title: s?.properties?.title, sheetId: s?.properties?.sheetId }))
+        .filter((t) => typeof t.title === 'string' && typeof t.sheetId === 'number');
+}
+/**
+ * Borra filas por número (1-based, contando el encabezado).
+ * Se agrupan las consecutivas y se envían en ORDEN DESCENDENTE dentro de un
+ * solo batchUpdate: si se borrara de arriba a abajo, cada borrado correría
+ * los índices y se eliminarían filas equivocadas.
+ */
+async function sheetsDeleteRows(sheet, filas) {
+    const orden = [...new Set(filas.filter(n => Number.isFinite(n) && n >= 2))].sort((a, b) => b - a);
+    if (!orden.length)
+        return 0;
+    const tab = (await sheetsTabs()).find(t => t.title === sheet);
+    if (!tab)
+        return 0;
+    const grupos = [];
+    for (const f of orden) {
+        const ult = grupos[grupos.length - 1];
+        if (ult && ult.start === f + 1)
+            ult.start = f;
+        else
+            grupos.push({ start: f, end: f });
+    }
+    const token = await accessToken();
+    const res = await fetch(`${base()}:batchUpdate`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            requests: grupos.map(g => ({
+                deleteDimension: { range: { sheetId: tab.sheetId, dimension: 'ROWS', startIndex: g.start - 1, endIndex: g.end } }
+            }))
+        })
+    });
+    if (!res.ok)
+        throw mapearError(res.status, await res.text(), `DELETE ${sheet}`);
+    return orden.length;
+}
+/** Cuenta filas que cumplen un predicado, leyendo la pestaña completa. */
+async function sheetsContar(sheet, ultimaCol, coincide) {
+    const v = await sheetsGetValues(`${sheet}!A2:${ultimaCol}`);
+    return v.filter(coincide).length;
 }

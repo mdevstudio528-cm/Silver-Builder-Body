@@ -125,7 +125,11 @@ class SheetsMov {
       COLUMNAS.forEach((k, j) => {
         o[k] = r[j] ?? "";
       });
-      o.monto = Number(o.monto || 0);
+      // Los valores de Sheets llegan FORMATEADOS ("13,000.00", "$1,497"): Number
+      // directo da NaN y TODAS las sumas (tarjetas, serie, historico) salian null.
+      const aNumero = (v) => { const n = Number(String(v ?? '').replace(/[$,\s]/g, '')); return isFinite(n) ? n : 0; };
+      o.monto = aNumero(o.monto);
+      o.deleted = aNumero(o.deleted);
       o.deleted = Number(o.deleted || 0);
       return { row: o, index: i + 2 };
     });

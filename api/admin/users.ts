@@ -9,6 +9,7 @@
  */
 import { run } from '../_lib/run';
 import { HttpError, json, requireBody, metodoPermitido, hoyISO } from '../_lib/http';
+import { aFechaISO, mesDe } from '../_lib/fechas';
 import { hashPassword, generarPasswordTemporal, validarPasswordNueva } from '../_lib/auth';
 import { getStore } from '../_lib/store';
 import { getMovStore } from '../_lib/mov.store';
@@ -67,7 +68,10 @@ const publico = (u: UserRow) => ({
   debeCambiarPass: Number(u.debe_cambiar_pass) === 1
 });
 
-const mes = (f: string) => String(f ?? '').slice(0, 7);
+// OJO: en la hoja la fecha puede volver como '8/11/2026' o como número de
+// serie. Con slice(0,7) eso daba '8/11/20' y el mes nunca coincidía: por eso
+// las gráficas salían vacías y el mes en $0.00 aunque hubiera movimientos.
+const mes = (f: any) => mesDe(f);
 const red2 = (n: number) => Math.round(n * 100) / 100;
 
 /** Últimos 6 meses naturales, terminando en el mes de hoy. */
@@ -106,7 +110,12 @@ export default run(async (req, res) => {
 
       const vivos = movs.filter(m => Number(m.deleted) !== 1);
       const hoy = hoyISO();
-      const meses = ultimosMeses(hoy, 6);
+      // Ventana de 6 meses anclada al mes más reciente con datos: si el usuario
+      // solo tiene movimientos viejos, la gráfica ya no aparece en blanco.
+      const conDatos = Array.from(new Set(vivos.map(m => mes(m.fecha)).filter(Boolean))).sort();
+      const ultimoConDatos = conDatos[conDatos.length - 1] || hoy.slice(0, 7);
+      const ancla = ultimoConDatos > hoy.slice(0, 7) ? ultimoConDatos : hoy.slice(0, 7);
+      const meses = ultimosMeses(ancla + '-01', 6);
 
       // serie mensual: ingresos, egresos y balance de los últimos 6 meses
       const serie = meses.map(ym => {
@@ -152,12 +161,14 @@ export default run(async (req, res) => {
           cobrado: red2(pagosVivos.reduce((s, p) => s + Number(p.monto), 0))
         },
         serie,
+        mesAncla: ancla,
+        fechasInvalidas: vivos.filter(m => !aFechaISO(m.fecha)).length,
         porCategoria,
         movimientos: vivos
           .sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)))
           .slice(0, 80)
           .map(m => ({
-            id: m.id, fecha: m.fecha, tipo: m.tipo, categoria: m.categoria,
+            id: m.id, fecha: aFechaISO(m.fecha) || m.fecha, tipo: m.tipo, categoria: m.categoria,
             descripcion: m.descripcion, monto: Number(m.monto), metodo: m.metodo
           })),
         metas: metasVivas.map(m => ({

@@ -30,6 +30,9 @@ interface Detalle {
     pagos: number; cobrado: number;
   };
   serie: SerieMes[];
+  sinDatosEnRango?: boolean;
+  mesAncla?: string;
+  fechasInvalidas?: number;
   porCategoria: { categoria: string; monto: number }[];
   movimientos: MovFila[];
   metas: { id: string; nombre: string; monto_objetivo: number; monto_actual: number; fecha_limite: string; prioridad: string }[];
@@ -317,15 +320,15 @@ const digitos = (s: any) => String(s ?? '').replace(/\D/g, '').replace(/^52(?=\d
             <!-- KPIs del mes -->
             <div class="grid grid--3" style="margin-top:16px">
               <div class="card">
-                <div class="kpi__label">Ingresos del mes</div>
+                <div class="kpi__label">Ingresos de {{ mesHoy() }}</div>
                 <div class="kpi__value" style="color:var(--ok)">{{ money(detalle()!.totales.ingresosMes) }}</div>
               </div>
               <div class="card">
-                <div class="kpi__label">Egresos del mes</div>
+                <div class="kpi__label">Egresos de {{ mesHoy() }}</div>
                 <div class="kpi__value" style="color:var(--bad)">{{ money(detalle()!.totales.egresosMes) }}</div>
               </div>
               <div class="card">
-                <div class="kpi__label">Balance del mes</div>
+                <div class="kpi__label">Balance de {{ mesHoy() }}</div>
                 <div class="kpi__value" [style.color]="detalle()!.totales.balanceMes >= 0 ? 'var(--brand)' : 'var(--bad)'">
                   {{ money(detalle()!.totales.balanceMes) }}
                 </div>
@@ -335,10 +338,24 @@ const digitos = (s: any) => String(s ?? '').replace(/\D/g, '').replace(/^52(?=\d
             <!-- GRAFICA 1: columnas ingresos vs egresos, ultimos 6 meses -->
             <div class="card" style="margin-top:14px">
               <div class="kpi__label">Ingresos vs egresos · últimos 6 meses</div>
+              @if (sinDatosSerie()) {
+                <p class="nota" style="margin-top:8px;color:#fbbf24">
+                  No hay movimientos entre {{ rangoSerie() }}. Si este usuario sí tiene datos,
+                  sus fechas no se pudieron leer o están fuera de ese rango: en la hoja deben
+                  estar como AAAA-MM-DD.
+                </p>
+              }
+              @if (detalle()!.fechasInvalidas) {
+                <p class="nota" style="margin-top:6px;color:#fbbf24">
+                  {{ detalle()!.fechasInvalidas }} movimiento(s) con fecha ilegible: no entran en estas cuentas.
+                </p>
+              }
               <div style="display:flex;gap:14px;margin:8px 0 4px">
                 <span class="nota"><i style="display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--ok);margin-right:5px"></i>Ingresos</span>
                 <span class="nota"><i style="display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--bad);margin-right:5px"></i>Egresos</span>
-                <span class="nota" style="margin-left:auto">Máximo: {{ moneyCorto(maxSerie()) }}</span>
+                @if (haySerie()) {
+                  <span class="nota" style="margin-left:auto">Máximo: {{ moneyCorto(maxSerie()) }}</span>
+                }
               </div>
               <svg viewBox="0 0 640 200" style="width:100%;height:auto;display:block" role="img"
                    [attr.aria-label]="'Ingresos y egresos de los últimos 6 meses de ' + detalle()!.user.nombre">
@@ -554,6 +571,26 @@ export class UsuariosPage {
     const d = this.detalle();
     if (!d) return 0;
     return Math.max(1, ...d.serie.flatMap(s => [s.ingresos, s.egresos]));
+  });
+
+  /** Mes en curso con su nombre, para que un $0.00 no parezca un error. */
+  mesHoy = computed(() => this.etiquetaMes(((this.detalle()?.hoy || '').slice(0, 7)) || '') || 'este mes');
+
+  /** ¿Hay algo que dibujar? Con todo en cero, la leyenda "Máximo" sobraba. */
+  haySerie = computed(() => this.maxSerie() > 1);
+
+  /** Los 6 meses en pantalla están todos en cero. */
+  sinDatosSerie = computed(() => {
+    const d = this.detalle();
+    return !!d && d.serie.length > 0 && d.serie.every(s => !s.movimientos);
+  });
+
+  rangoSerie = computed(() => {
+    const d = this.detalle();
+    if (!d || !d.serie.length) return '';
+    const a = this.etiquetaMes(d.serie[0].ym);
+    const b = this.etiquetaMes(d.serie[d.serie.length - 1].ym);
+    return `${a} – ${b}`;
   });
 
   barras = computed<Barra[]>(() => {

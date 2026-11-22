@@ -37,8 +37,92 @@ export function diasEntre(desde: string, hasta: string): number {
   return Math.round((b - a) / 86_400_000);
 }
 
-/** '2026-11' para agrupar por mes. */
-export const mesDe = (fecha: string): string => String(fecha).slice(0, 7);
 
 /** Cuántos días faltan para `fecha` desde `hoy` (negativo = ya pasó). */
 export const diasRestantes = (hoy: string, fecha: string): number => diasEntre(hoy, fecha);
+
+/**
+ * Fechas que llegan de Google Sheets → siempre 'YYYY-MM-DD'.
+ *
+ * La MISMA fecha puede volver como:
+ *   '2026-11-08'                 texto ISO (lo que escribe la app)
+ *   '2026-11-08T06:00:00.000Z'   con hora
+ *   '8/11/2026'                  formato de la hoja (d/m/aaaa)
+ *   '11/8/2026'                  formato de la hoja (m/d/aaaa)
+ *   46304                        número de serie de Sheets/Excel
+ *   Date
+ * Si no se puede leer, devuelve ''.
+ *
+ * FECHA_ORDEN=DMY (default, México) | MDY  → qué hacer cuando el día y el mes
+ * son ambos <= 12 y por tanto la fecha es ambigua.
+ */
+const ORDEN = String(process.env.FECHA_ORDEN || 'DMY').toUpperCase();
+
+const dos = (n: number) => String(n).padStart(2, '0');
+
+function desdePartes(y: number, m: number, d: number): string {
+  if (!y || m < 1 || m > 12 || d < 1 || d > 31) return '';
+  return `${y}-${dos(m)}-${dos(d)}`;
+}
+
+export function aFechaISO(valor: unknown): string {
+  if (valor === null || valor === undefined || valor === '') return '';
+
+  if (valor instanceof Date) {
+    if (isNaN(valor.getTime())) return '';
+    return desdePartes(valor.getUTCFullYear(), valor.getUTCMonth() + 1, valor.getUTCDate());
+  }
+
+  const txt = String(valor).trim();
+  if (!txt) return '';
+
+  // número de serie de Google Sheets (días desde 1899-12-30)
+  if (/^\d+(\.\d+)?$/.test(txt)) {
+    const serial = Number(txt);
+    if (serial > 20000 && serial < 80000) {
+      const f = new Date(Date.UTC(1899, 11, 30) + Math.round(serial) * 86400000);
+      return desdePartes(f.getUTCFullYear(), f.getUTCMonth() + 1, f.getUTCDate());
+    }
+    return '';
+  }
+
+  // ISO: 2026-11-08 o 2026-11-08T...
+  let m = txt.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
+  if (m) return desdePartes(+m[1], +m[2], +m[3]);
+
+  // dd/mm/aaaa o mm/dd/aaaa
+  m = txt.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/);
+  if (m) {
+    const a = +m[1], b = +m[2];
+    let dia: number, mes: number;
+    if (a > 12) { dia = a; mes = b; }
+    else if (b > 12) { dia = b; mes = a; }
+    else if (ORDEN === 'MDY') { mes = a; dia = b; }
+    else { dia = a; mes = b; }
+    return desdePartes(+m[3], mes, dia);
+  }
+
+  // dd/mm/aa
+  m = txt.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2})$/);
+  if (m) {
+    const a = +m[1], b = +m[2];
+    let dia: number, mes: number;
+    if (a > 12) { dia = a; mes = b; }
+    else if (b > 12) { dia = b; mes = a; }
+    else if (ORDEN === 'MDY') { mes = a; dia = b; }
+    else { dia = a; mes = b; }
+    return desdePartes(2000 + (+m[3]), mes, dia);
+  }
+
+  const d = new Date(txt);
+  if (!isNaN(d.getTime())) {
+    return desdePartes(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate());
+  }
+  return '';
+}
+
+/** 'YYYY-MM' del mes al que pertenece la fecha ('' si no se pudo leer). */
+export function mesDe(valor: unknown): string {
+  const f = aFechaISO(valor);
+  return f ? f.slice(0, 7) : '';
+}

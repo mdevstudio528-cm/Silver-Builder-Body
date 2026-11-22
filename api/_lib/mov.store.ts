@@ -11,6 +11,7 @@ import type { MovRow } from './mov.types';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { sheetsGetValues, sheetsAppendRows, sheetsBatchUpdate, sheetsEnsureSheet } from './sheets';
+import { aFechaISO } from './fechas';
 
 export interface MovStore {
   ensureSchema(): Promise<void>;
@@ -150,7 +151,7 @@ export function getMovStore(): MovStore {
 /** Lo que el navegador recibe: números como números, sin nada interno. */
 export function publicRow(r: MovRow) {
   return {
-    id: r.id, fecha: r.fecha, tipo: r.tipo, categoria: r.categoria,
+    id: r.id, fecha: aFechaISO(r.fecha) || r.fecha, tipo: r.tipo, categoria: r.categoria,
     descripcion: r.descripcion, monto: Number(r.monto), metodo: r.metodo,
     created_at: r.created_at, updated_at: r.updated_at, deleted: Number(r.deleted)
   };

@@ -102,7 +102,7 @@ function sumarMesesLocal(fecha: string, meses: number): string {
 export function resumenCartera(clientes: ResumenCliente[], pagos: PagoRow[], hoy: string) {
   const mes = hoy.slice(0, 7);
   const cobradoMes = pagos
-    .filter(p => Number(p.deleted) !== 1 && String(p.fecha_pago).slice(0, 7) === mes)
+    .filter(p => Number(p.deleted) !== 1 && mesDe(p.fecha_pago) === mes)
     .reduce((s, p) => s + Number(p.monto || 0), 0);
 
   const porEstado = (e: EstadoCobro) => clientes.filter(c => c.estado === e).length;

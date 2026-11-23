@@ -1,17 +1,10 @@
 {
-  "name": "administrador-financiero-ur",
+  "name": "silver-builder-body",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "start": "ng serve",
-    "build": "ng build",
-    "build:api": "node scripts/compilar-api.mjs",
-    "dev:api": "tsx scripts/dev-api.ts",
-    "seed:admin": "tsx scripts/seed-admin.ts",
-    "crear:usuario": "tsx scripts/crear-usuario.ts",
-    "hash": "tsx scripts/generar-hash.ts",
-    "verificar:hoja": "tsx scripts/verificar-hoja.ts",
-    "preparar:env": "tsx scripts/preparar-env.ts"
+    "build": "ng build"
   },
   "dependencies": {
     "@angular/common": "^18.2.0",
@@ -21,7 +14,6 @@
     "@angular/platform-browser": "^18.2.0",
     "@angular/router": "^18.2.0",
     "@angular/service-worker": "^18.2.0",
-    "dexie": "^4.0.11",
     "rxjs": "~7.8.1",
     "tslib": "^2.6.3",
     "zone.js": "~0.14.10"
@@ -30,10 +22,9 @@
     "@angular-devkit/build-angular": "^18.2.11",
     "@angular/cli": "^18.2.11",
     "@angular/compiler-cli": "^18.2.11",
-    "tsx": "^4.19.2",
     "typescript": "~5.5.4"
   },
   "engines": {
-    "node": "26.x"
+    "node": ">=18"
   }
 }

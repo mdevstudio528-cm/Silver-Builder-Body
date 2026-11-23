@@ -1,14 +1,10 @@
-node_modules/
 dist/
+node_modules/
 .angular/
-.env
-data/*.json
-*.log
-cookies*.txt
-google-service-account.json
-*-service-account*.json
-
-# Secretos: NUNCA al repositorio
-clave.json
-*.json.bak
-.env.bak
+npm-debug.log
+.DS_Store
+build.log
+silver-builder-body/
+.vercelignore
+.vercel/
+*.tsbuildinfo
